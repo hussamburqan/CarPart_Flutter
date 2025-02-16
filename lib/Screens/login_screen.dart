@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import '../apptheme.dart';
 import '../services/auth_service.dart';
@@ -29,13 +30,18 @@ class _LoginPageState extends State<LoginPage> {
       final username = _usernameController.text.trim();
       final password = _passwordController.text;
 
+      if (username.isEmpty || password.isEmpty) {
+        _errorMessage = 'Please fill in all fields';
+        return;
+      }
+
       final loginResponse = await _authService.login(
-        username: username,
-        password: password,
+        username,
+        password,
       );
 
       if (!mounted) return;
-
+      print(loginResponse.challengecreatedat);
       if (loginResponse.requires2FA) {
         Navigator.pushNamed(
           context,
@@ -44,6 +50,7 @@ class _LoginPageState extends State<LoginPage> {
             'username': username,
             'password': password,
             'serverChallenge': loginResponse.serverChallenge,
+            'challengecreatedat': loginResponse.challengecreatedat
           },
         );
       } else {
@@ -51,7 +58,7 @@ class _LoginPageState extends State<LoginPage> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = e.toString().replaceAll('Exception:', '').trim();
       });
     } finally {
       if (mounted) {

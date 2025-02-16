@@ -1,264 +1,159 @@
-import 'package:dio/dio.dart';
+import 'dart:convert';
 import 'package:hive/hive.dart';
 import 'package:crypto/crypto.dart';
-import 'dart:convert';
-import '../Model/user.dart';
+import 'package:dio/dio.dart';
+import '../Model/order.dart';
+import 'DioHelper.dart';
 
 class LoginResponse {
   final bool requires2FA;
   final String? serverChallenge;
-  final String? token;
-  final String? email;
-  final String? detail;
+  final String? challengecreatedat;
+  final String? accessToken;
+  final String? refreshToken;
 
   LoginResponse({
     required this.requires2FA,
     this.serverChallenge,
-    this.token,
-    this.email,
-    this.detail,
+    this.challengecreatedat,
+    this.accessToken,
+    this.refreshToken,
   });
 
-  factory LoginResponse.fromJson(Map<String, dynamic> json) {
-    return LoginResponse(
-      requires2FA: json['2fa_required'] ?? false,
-      serverChallenge: json['server_challenge'],
-      token: json['encrypted_token'],
-      email: json['email'],
-      detail: json['detail'],
-    );
-  }
+  factory LoginResponse.fromJson(Map<String, dynamic> json) => LoginResponse(
+    requires2FA: json['2fa_required'] ?? false,
+    serverChallenge: json['server_challenge'],
+    challengecreatedat: json['challenge_created_at'],
+    accessToken: json['access_token'],
+    refreshToken: json['refresh_token'],
+  );
 }
 
+
 class AuthService {
-  final Dio _dio;
-  static const String baseUrl = 'http://10.0.2.2:8000/mypartapi';
-  static const String sharedSecret = "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8";
+  static final AuthService _instance = AuthService._internal();
+  factory AuthService() => _instance;
+  AuthService._internal();
 
-  AuthService() : _dio = Dio(BaseOptions(
-    baseUrl: baseUrl,
-    connectTimeout: const Duration(seconds: 5),
-    receiveTimeout: const Duration(seconds: 3),
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-  )) {
-    _initializeInterceptors();
-  }
-  void _initializeInterceptors() {
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final box = await Hive.openBox('auth');
-        final sessionId = box.get('session_id');
+  final Dio _dio = DioHelper().dio;
+  final _authBox = Hive.box('auth');
 
-        if (sessionId != null) {
-          options.headers['Cookie'] = sessionId; // إرسال session_id
-        }
+  static const String _sharedSecret =
+      '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8';
 
-        print('REQUEST [${options.method}] => PATH: ${options.path}');
-        print('HEADERS: ${options.headers}');
-        print('BODY: ${options.data}');
-
-        return handler.next(options);
-      },
-      onResponse: (response, handler) async {
-        print('RESPONSE [${response.statusCode}] => DATA: ${response.data}');
-        return handler.next(response);
-      },
-      onError: (DioException e, handler) {
-        print('ERROR [${e.response?.statusCode}] => MESSAGE: ${e.message}');
-        return handler.next(e);
-      },
-    ));
-  }
-
-
-  String _generateChallengeResponse(String challenge) {
-    final input = challenge + sharedSecret;
-    final bytes = utf8.encode(input);
-    return sha256.convert(bytes).toString();
-  }
-
-  Future<LoginResponse> login({
-    required String username,
-    required String password,
-  }) async {
-    try {
+  Future<LoginResponse> login(String username, String password) async {
+    try{
       final response = await _dio.post(
         '/login',
-        data: {'username': username, 'password': password},
+        data: jsonEncode({'username': username, 'password': password}),
+        options: Options(headers: {'Content-Type': 'application/json'}),
       );
 
-      if (response.statusCode == 200) {
-        final cookies = response.headers['set-cookie'];
-        if (cookies != null && cookies.isNotEmpty) {
-          for (var cookie in cookies) {
-            if (cookie.startsWith('sessionid=')) {
-              final sessionId = cookie.split(';')[0]; // استخلاص sessionid فقط
-              final box = await Hive.openBox('auth');
-              await box.put('session_id', sessionId); // تخزين السيشن في Hive
-              print('Session ID stored: $sessionId');
-              break;
-            }
-          }
-        }
-
-        // تخزين التحدي المستلم من السيرفر
-        final box = await Hive.openBox('auth');
-        await box.put('server_challenge', response.data['server_challenge']);
-
-        return LoginResponse.fromJson(response.data);
+      final loginResponse = LoginResponse.fromJson(response.data);
+      if (loginResponse.requires2FA) {
+        return loginResponse;
       }
-      throw Exception(response.data['detail'] ?? 'Login failed');
-    } on DioException catch (e) {
-      throw _handleDioError(e);
+
+      return await _completeHandshake(username , loginResponse.serverChallenge ?? '', loginResponse.challengecreatedat ?? '');
+    } catch (e) {
+      if (e is DioException) {
+        final statusCode = e.response?.statusCode;
+        if(statusCode==401){
+          throw Exception('تاكد من اسم المستخدم او كلمة المرور');
+        }
+      }
+      throw Exception('فشل تسجيل الدخول');
     }
+  }
+
+  Future<LoginResponse> _completeHandshake(String username,String serverChallenge,String timenow) async {
+
+    final response = await _dio.post(
+      '/verify-handshake',
+      data: jsonEncode({
+        'username': username,
+        'client_response': _generateChallengeResponse(serverChallenge),
+        'challenge_created_at': timenow,
+        'server_challenge': serverChallenge,
+      }),
+      options: Options(headers: {'Content-Type': 'application/json'}),
+    );
+
+    final loginResponse = LoginResponse.fromJson(response.data);
+
+    await _persistAuthData(loginResponse.accessToken!, loginResponse.refreshToken!,username,response.data['role'],response.data['id']);
+    return loginResponse;
   }
 
   Future<void> verify2FA({
     required String username,
-    required String totpToken,
+    required String serverChallenge,
+    required String challenge_created_at,
+    required String totp,
   }) async {
     try {
-      final box = await Hive.openBox('auth');
-      final sessionId = box.get('session_id');
-      final serverChallenge = box.get('server_challenge');
-
-      if (serverChallenge == null || sessionId == null) {
-        throw Exception('Session or challenge data not found');
-      }
-
       final response = await _dio.post(
         '/verify-handshake',
-        data: {
+        data: jsonEncode({
           'username': username,
           'client_response': _generateChallengeResponse(serverChallenge),
-          'totp_token': totpToken,
-        },
-        options: Options(
-          headers: {'Cookie': sessionId}, // إرسال session_id مع الطلب
-        ),
+          'totp_token': totp,
+          'challenge_created_at': challenge_created_at,
+          'server_challenge': serverChallenge,
+        }),
+        options: Options(headers: {'Content-Type': 'application/json'}),
       );
+      print(response.data);
+      final loginResponse = LoginResponse.fromJson(response.data);
+      await _persistAuthData(loginResponse.accessToken!, loginResponse.refreshToken!,username,response.data['role'],response.data['id']);
 
-      if (response.statusCode != 200) {
-        throw Exception(response.data['detail'] ?? 'Verification failed');
+    } catch (e) {
+      if (e is DioException) {
+        final statusCode = e.response?.statusCode;
+        print(e.response?.data);
+        if(statusCode==400){
+          throw Exception('رمز التحقق خاطئ');
+        }
       }
-    } on DioException catch (e) {
-      throw _handleDioError(e);
+      throw Exception('فشل التحقق من المصادقة الثنائي');
     }
   }
 
+  Future<void> register(String username, String email, String phone, String password) async {
+    final response = await _dio.post(
+      '/register',
+      data: jsonEncode({'username': username, 'email': email, 'phone': phone, 'password': password}),
+      options: Options(headers: {'Content-Type': 'application/json'}),
+    );
 
-  Future<User> register({
-    required String username,
-    required String email,
-    required String password,
-  }) async {
-    try {
-      final response = await _dio.post(
-        '/register',
-        data: jsonEncode({
-          'username': username,
-          'email': email,
-          'password': password,
-        }),
-      );
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        // Token will be saved by the interceptor from the cookie
-
-        final user = User(
-          username: username,
-          email: email,
-        );
-        await _saveUser(user);
-        return user;
-      }
-
-      throw Exception(response.data['detail'] ?? 'Registration failed');
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    }
+    await _persistAuthData(response.data['access_token'], response.data['refresh_token'],username,response.data['role'],response.data['id']);
+    return ;
   }
 
   Future<void> logout() async {
-    try {
-      await _dio.post('/logout');
-    } finally {
-      await clearSession();
-    }
+    await _dio.post('/logout');
+    final _cartBox = Hive.box<CartItem>('cartBox');
+    await _authBox.clear();
+    await _cartBox.clear();
+
   }
 
-  Future<void> setup2FA() async {
-    try {
-      final response = await _dio.get('/setup-2fa');
-
-      if (response.statusCode == 200) {
-        return response.data;
-      }
-
-      throw Exception(response.data['error'] ?? 'Failed to setup 2FA');
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    }
+  Future<void> _persistAuthData(String accessToken, String refreshToken,String username,String role,int id) async {
+    print(accessToken);
+    await _authBox.putAll({
+      'accessToken': accessToken,
+      'username': username,
+      'id': id,
+      'role': role,
+      'refreshToken': refreshToken,
+    });
   }
-
-  Future<void> disable2FA() async {
-    try {
-      final response = await _dio.post('/disable-2fa');
-
-      if (response.statusCode != 200) {
-        throw Exception(response.data['error'] ?? 'Failed to disable 2FA');
-      }
-    } on DioException catch (e) {
-      throw _handleDioError(e);
-    }
+  Future<bool> isSeller() async {
+    
+    return _authBox.get('role');
   }
-
-  Future<void> _saveUser(User user) async {
-    final box = await Hive.openBox<User>('users');
-    await box.put('currentUser', user);
-  }
-
-  Future<User?> getCurrentUser() async {
-    final box = await Hive.openBox<User>('users');
-    return box.get('currentUser');
-  }
-
-  Future<void> clearSession() async {
-    final authBox = await Hive.openBox('auth');
-    final usersBox = await Hive.openBox<User>('users');
-    await authBox.clear();
-    await usersBox.clear();
-  }
-
-  Exception _handleDioError(DioException e) {
-    if (e.type == DioExceptionType.connectionTimeout ||
-        e.type == DioExceptionType.receiveTimeout) {
-      return Exception('Connection timeout. Please check your internet connection.');
-    }
-
-    if (e.response?.statusCode == 401) {
-      return Exception('Invalid credentials');
-    }
-
-    if (e.response?.statusCode == 400) {
-      final message = e.response?.data['detail'] ??
-          e.response?.data['error'] ??
-          'Bad request';
-      return Exception(message);
-    }
-
-    return Exception('An unexpected error occurred. Please try again.');
-  }
-
-  Future<bool> hasValidSession() async {
-    try {
-      final box = await Hive.openBox('auth');
-      return box.get('token') != null;
-    } catch (e) {
-      return false;
-    }
+  String _generateChallengeResponse(String challenge) {
+    final bytes = utf8.encode(challenge + _sharedSecret);
+    return sha256.convert(bytes).toString();
   }
 }

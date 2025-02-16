@@ -1,35 +1,38 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'user.dart';
+part of 'order.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class UserAdapter extends TypeAdapter<User> {
+class CartItemAdapter extends TypeAdapter<CartItem> {
   @override
-  final int typeId = 0;
+  final int typeId = 1;
 
   @override
-  User read(BinaryReader reader) {
+  CartItem read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return User(
-      username: fields[0] as String,
-      email: fields[1] as String,
+    return CartItem(
+      carPart: fields[0] as CarPart,
+      quantity: fields[1] as int,
+      price: fields[2] as double,
     );
   }
 
   @override
-  void write(BinaryWriter writer, User obj) {
+  void write(BinaryWriter writer, CartItem obj) {
     writer
-      ..writeByte(2)
+      ..writeByte(3)
       ..writeByte(0)
-      ..write(obj.username)
+      ..write(obj.carPart)
       ..writeByte(1)
-      ..write(obj.email);
+      ..write(obj.quantity)
+      ..writeByte(2)
+      ..write(obj.price);
   }
 
   @override
@@ -38,7 +41,7 @@ class UserAdapter extends TypeAdapter<User> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is UserAdapter &&
+      other is CartItemAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

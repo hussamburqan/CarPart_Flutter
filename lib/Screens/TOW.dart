@@ -28,6 +28,7 @@ class _VerificationCodePageState extends State<VerificationCodePage> {
 
   String username = '';
   String serverChallenge = '';
+  String challengecreatedat = '';
 
   @override
   void initState() {
@@ -56,6 +57,7 @@ class _VerificationCodePageState extends State<VerificationCodePage> {
 
     final username = args['username'] as String?;
     final serverChallenge = args['serverChallenge'] as String?;
+    final challengecreatedat = args['challengecreatedat'] as String?;
 
     if (username == null || serverChallenge == null) {
       setState(() {
@@ -67,6 +69,7 @@ class _VerificationCodePageState extends State<VerificationCodePage> {
     setState(() {
       this.username = username;
       this.serverChallenge = serverChallenge;
+      this.challengecreatedat = challengecreatedat!;
       _isInitialized = true;
     });
   }
@@ -96,16 +99,18 @@ class _VerificationCodePageState extends State<VerificationCodePage> {
     try {
       await _authService.verify2FA(
         username: username,
-        totpToken: _code,
+        serverChallenge: serverChallenge,
+        challenge_created_at: challengecreatedat,
+        totp: _code,
       );
 
       if (!mounted) return;
 
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = e.toString().replaceAll('Exception:', '').trim();
         });
       }
     } finally {
