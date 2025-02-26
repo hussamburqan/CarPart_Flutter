@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-
 import '../../Model/models.dart';
+import '../../Services/localizations.dart';
+
 class CarPartCard extends StatelessWidget {
   final CarPart carPart;
   final VoidCallback onTap;
 
   const CarPartCard({
-    Key? key,
+    super.key,
     required this.carPart,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,26 +33,28 @@ class CarPartCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(16)),
               child: Stack(
                 children: [
-                   carPart.photo != null ? Image.network(
-                     height: 100,
-                          'https://carparts1234.pythonanywhere.com${carPart.photo}',
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey[200],
-                              child: const Icon(Icons.error),
-                            );
-                          },
-                        ):
-                    Container(
-                      height: 100,
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.image_not_supported),
-                    ),
+                  carPart.photo != null
+                      ? Image.network(
+                    height: 100,
+                    'https://carparts1234.pythonanywhere.com${carPart.photo}',
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.error),
+                      );
+                    },
+                  )
+                      : Container(
+                    height: 100,
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.image_not_supported),
+                  ),
                   if (carPart.quantity > 0)
                     Positioned(
                       top: 8,
@@ -65,9 +68,9 @@ class CarPartCard extends StatelessWidget {
                           color: Colors.green,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Text(
-                          'In Stock',
-                          style: TextStyle(
+                        child: Text(
+                          AppLocalizations.of(context)!.translate('in_stock')!,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -112,15 +115,17 @@ class CarPartCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
-                          ),disabledBackgroundColor: Color(-14195991)
+                          ),
+                          disabledBackgroundColor: const Color(-14195991),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Icon(Icons.edit, size: 18, color: Colors.white),
                             Text(
-                              'Edit me',
-                              style: const TextStyle(fontSize: 12, color: Colors.white),
+                              AppLocalizations.of(context)!.translate('edit_me')!,
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.white),
                             ),
                           ],
                         ),

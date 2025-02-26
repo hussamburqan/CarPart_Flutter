@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../Model/order.dart';
-import '../Services/orderservies.dart';
+import '../Services/localizations.dart';
+import '../Services/order_servies.dart';
 import 'Order_Details_Page.dart';
+import 'components/pagination.dart';
 
 class OrdersPage extends StatefulWidget {
   final bool isSeller;
@@ -33,23 +35,20 @@ class _OrdersPageState extends State<OrdersPage> {
     setState(() => _isLoading = true);
     try {
       final response = widget.isSeller
-          ? await _orderService.getSoldOrders(page: page, perPage: _perPage)
-          : await _orderService.getOrders(page: page, perPage: _perPage);
-
+          ? await _orderService.getSoldOrders(context: context, page: page, perPage: _perPage)
+          : await _orderService.getOrders(context: context, page: page, perPage: _perPage);
 
       setState(() {
         _orders = response['orders'] ?? [];
         _currentPage = page;
         _totalPages = response['total_pages'] ?? 1;
       });
-
     } catch (e) {
-      _showErrorSnackBar('Failed to load orders: $e');
+      _showErrorSnackBar(AppLocalizations.of(context)!.translate('failed_load_orders')!);
     } finally {
       setState(() => _isLoading = false);
     }
   }
-
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -75,11 +74,11 @@ class _OrdersPageState extends State<OrdersPage> {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Theme
-            .of(context)
-            .scaffoldBackgroundColor,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         title: Text(
-          widget.isSeller ? 'Sold Orders' : 'My Orders',
+          widget.isSeller
+              ? AppLocalizations.of(context)!.translate('sold_orders')!
+              : AppLocalizations.of(context)!.translate('my_orders')!,
           style: TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.bold,
@@ -113,7 +112,12 @@ class _OrdersPageState extends State<OrdersPage> {
               ),
             ),
           ),
-          _buildPaginationControls(),
+          PaginationControls(
+            currentPage: _currentPage,
+            totalPages: _totalPages,
+            onNext: () => _loadOrders(page: _currentPage + 1),
+            onPrevious: () => _loadOrders(page: _currentPage - 1),
+          )
         ],
       ),
     );
@@ -131,7 +135,9 @@ class _OrdersPageState extends State<OrdersPage> {
           ),
           SizedBox(height: 16),
           Text(
-            widget.isSeller ? 'No sold orders yet' : 'No orders yet',
+            widget.isSeller
+                ? AppLocalizations.of(context)!.translate('no_sold_orders')!
+                : AppLocalizations.of(context)!.translate('no_orders')!,
             style: TextStyle(
               fontSize: 18,
               color: Colors.grey[600],
@@ -142,68 +148,7 @@ class _OrdersPageState extends State<OrdersPage> {
       ),
     );
   }
-
-  Widget _buildPaginationControls() {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Expanded(
-            child: SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _currentPage > 1 ? () =>
-                    _loadOrders(page: _currentPage - 1) : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _currentPage > 1 ? Colors.blue : Colors
-                      .grey[300],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.arrow_back, size: 16, color: Colors.white),
-                    SizedBox(width: 4),
-                    Text('Previous', style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          SizedBox(width: 12),
-          Text(
-            'Page $_currentPage of $_totalPages',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _currentPage < _totalPages ? () =>
-                    _loadOrders(page: _currentPage + 1) : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _currentPage < _totalPages
-                      ? Colors.blue
-                      : Colors.grey[300],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Text('Next', style: TextStyle(color: Colors.white)),
-                    SizedBox(width: 4),
-                    Icon(Icons.arrow_forward, size: 16, color: Colors.white),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
-
 
 class OrderCard extends StatelessWidget {
   final Order order;
@@ -235,7 +180,7 @@ class OrderCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Order #${order.id}',
+                    '${AppLocalizations.of(context)!.translate('order')!} #${order.id}',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -266,7 +211,7 @@ class OrderCard extends StatelessWidget {
                 ],
               ),
               SizedBox(height: 16),
-              _buildItemsSummary(order.items),
+              _buildItemsSummary(context,order.items),
               SizedBox(height: 12),
               Divider(),
               SizedBox(height: 8),
@@ -274,7 +219,7 @@ class OrderCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '${order.items.length} items',
+                    '${order.items.length} ${AppLocalizations.of(context)!.translate('items')!}',
                     style: TextStyle(
                       color: Colors.grey[600],
                       fontSize: 14,
@@ -283,7 +228,7 @@ class OrderCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        'View Details',
+                        AppLocalizations.of(context)!.translate('view_details')!,
                         style: TextStyle(
                           color: Colors.blue.shade700,
                           fontWeight: FontWeight.w500,
@@ -305,48 +250,49 @@ class OrderCard extends StatelessWidget {
     );
   }
 
-}  Widget _buildItemsSummary(List<OrderItem> items) {
-  return Container(
-    padding: EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: Colors.grey[100],
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (var i = 0; i < items.length && i < 2; i++)
-          Padding(
-            padding: EdgeInsets.only(bottom: i < items.length - 1 ? 8 : 0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  items[i].carPartName,
-                  style: TextStyle(fontSize: 14),
-                ),
-                Text(
-                  'x${items[i].quantity}',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
+  Widget _buildItemsSummary(context,List<OrderItem> items) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < items.length && i < 2; i++)
+            Padding(
+              padding: EdgeInsets.only(bottom: i < items.length - 1 ? 8 : 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    items[i].carPartName,
+                    style: TextStyle(fontSize: 14),
                   ),
-                ),
-              ],
-            ),
-          ),
-        if (items.length > 2)
-          Padding(
-            padding: EdgeInsets.only(top: 8),
-            child: Text(
-              '+ ${items.length - 2} more items',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
+                  Text(
+                    'x${items[i].quantity}',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-      ],
-    ),
-  );
+          if (items.length > 2)
+            Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text(
+                '+ ${items.length - 2} ${AppLocalizations.of(context)!.translate('more_items')!}',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }

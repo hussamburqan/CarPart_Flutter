@@ -44,7 +44,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
   Future<void> _loadCategories() async {
     try {
-      final categories = await _apiService.getCategories();
+      final categories = await _apiService.getCategories(context);
       setState(() {
         _categories = categories;
         _filteredCategories = categories;
@@ -89,7 +89,7 @@ class _AddProductPageState extends State<AddProductPage> {
     };
 
     try {
-      await _apiService.createCarPart(formData, _selectedImage!.path);
+      await _apiService.createCarPart(context: context,carPartData:  formData,imagePath: _selectedImage!.path);
       _showSnackBar('Product added successfully!', isError: false);
       Navigator.pop(context);
     } catch (e) {

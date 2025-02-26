@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../Model/models.dart';
+import '../../Services/localizations.dart';
 
 class CarPartCard extends StatelessWidget {
   final CarPart carPart;
@@ -35,26 +36,28 @@ class CarPartCard extends StatelessWidget {
           children: [
             // Image
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(16)),
               child: Stack(
                 children: [
-                   carPart.photo != null ? Image.network(
-                     height: 100,
-                          'https://carparts1234.pythonanywhere.com${carPart.photo}',
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey[200],
-                              child: const Icon(Icons.error),
-                            );
-                          },
-                        ):
-                    Container(
-                      height: 100,
-                      color: Colors.grey[200],
-                      child: const Icon(Icons.image_not_supported),
-                    ),
+                  carPart.photo != null
+                      ? Image.network(
+                    height: 100,
+                    'https://carparts1234.pythonanywhere.com${carPart.photo}',
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.error),
+                      );
+                    },
+                  )
+                      : Container(
+                    height: 100,
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.image_not_supported),
+                  ),
                   if (carPart.quantity > 0)
                     Positioned(
                       top: 8,
@@ -68,9 +71,9 @@ class CarPartCard extends StatelessWidget {
                           color: Colors.green,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Text(
-                          'In Stock',
-                          style: TextStyle(
+                        child: Text(
+                          AppLocalizations.of(context)!.translate('in_stock')!,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -120,10 +123,16 @@ class CarPartCard extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.shopping_cart_outlined, size: 18,color: carPart.quantity > 0 ? Colors.white :Colors.grey ,),
+                            Icon(
+                              Icons.shopping_cart_outlined,
+                              size: 18,
+                              color: carPart.quantity > 0 ? Colors.white : Colors.grey,
+                            ),
                             const SizedBox(width: 4),
                             Text(
-                              carPart.quantity > 0 ? 'Add to Cart' : 'Out of Stock',
+                              carPart.quantity > 0
+                                  ? AppLocalizations.of(context)!.translate('add_to_cart')!
+                                  : AppLocalizations.of(context)!.translate('out_of_stock')!,
                               style: const TextStyle(fontSize: 12),
                             ),
                           ],

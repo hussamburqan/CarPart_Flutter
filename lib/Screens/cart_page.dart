@@ -2,8 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../Model/order.dart';
-import '../Services/orderservies.dart';
+import '../Services/order_servies.dart';
 import 'Order_Details_Page.dart';
+import '../Services/localizations.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({Key? key}) : super(key: key);
@@ -36,14 +37,17 @@ class _CartPageState extends State<CartPage> {
 
   Future<void> _createOrder() async {
     if (_cartItems.isEmpty) {
-      _showErrorDialog('Your cart is empty.');
+      _showErrorDialog(AppLocalizations.of(context)!.translate('cart_empty')!);
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final order = await _orderService.createOrder(_cartItems);
+      final order = await _orderService.createOrder(
+        context: context,
+        cartItems: _cartItems,
+      );
 
       final cartBox = Hive.box<CartItem>('cartBox');
       await cartBox.clear();
@@ -51,8 +55,8 @@ class _CartPageState extends State<CartPage> {
       setState(() => _cartItems = []);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Order created successfully!'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.translate('order_created_success')!),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
         ),
@@ -71,6 +75,36 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
+  void _updateQuantity(int index, int newQuantity) async {
+    final cartBox = Hive.box<CartItem>('cartBox');
+    final item = _cartItems[index];
+
+    if (newQuantity <= 0) {
+      _deleteCartItem(index);
+      return;
+    }
+
+    if (newQuantity > item.carPart.quantity) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${AppLocalizations.of(context)!.translate('only')} ${item.carPart.quantity} ${AppLocalizations.of(context)!.translate('items_in_stock')}!',
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final key = cartBox.keyAt(index);
+    final updatedItem = item.copyWith(quantity: newQuantity);
+    await cartBox.put(key, updatedItem);
+
+    setState(() {
+      _cartItems[index] = updatedItem;
+    });
+  }
 
   void _deleteCartItem(int index) async {
     final cartBox = Hive.box<CartItem>('cartBox');
@@ -83,28 +117,29 @@ class _CartPageState extends State<CartPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Item removed from cart'),
+        content: Text(AppLocalizations.of(context)!.translate('item_removed')!),
         backgroundColor: Colors.orange,
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
+
   void _showErrorDialog(dynamic error) {
-    String errorMessage = 'Failed to place the order. Please try again later.';
+    String errorMessage = AppLocalizations.of(context)!.translate('order_failed')!;
 
     if (error is DioException) {
       if (error.response != null && error.response!.data is Map<String, dynamic>) {
         errorMessage = error.response!.data['error'] ?? errorMessage;
       } else {
-        errorMessage = 'An unexpected error occurred. Please check your connection.';
+        errorMessage = AppLocalizations.of(context)!.translate('unexpected_error')!;
       }
     }
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text(
-          'Order Failed',
+        title: Text(
+          AppLocalizations.of(context)!.translate('order_failed')!,
           style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
         ),
         content: Text(errorMessage, style: const TextStyle(fontSize: 16)),
@@ -112,7 +147,7 @@ class _CartPageState extends State<CartPage> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'OK',
+              AppLocalizations.of(context)!.translate('ok')!,
               style: TextStyle(color: Theme.of(context).primaryColor),
             ),
           ),
@@ -121,13 +156,12 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Cart',
+          AppLocalizations.of(context)!.translate('cart')!,
           style: TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.bold,
@@ -137,8 +171,8 @@ class _CartPageState extends State<CartPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _cartItems.isEmpty
-          ? const Center(
-        child: Text('Your cart is empty'),
+          ? Center(
+        child: Text(AppLocalizations.of(context)!.translate('cart_empty')!),
       )
           : ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -147,41 +181,100 @@ class _CartPageState extends State<CartPage> {
           final item = _cartItems[index];
           return Card(
             margin: const EdgeInsets.only(bottom: 16),
-            child: ListTile(
-              leading: item.carPart.photo?.isNotEmpty ?? false
-                  ? ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  'https://carparts1234.pythonanywhere.com${item.carPart.photo!}',
-                  width: 60,
-                  height: 60,
-                  fit: BoxFit.cover,
-                ),
-              )
-                  : Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.image_not_supported),
-              ),
-              title: Text(item.carPart.name),
-              subtitle: Text(
-                'Quantity: ${item.quantity}',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
                 children: [
-                  Text(
-                    '\$${item.totalPrice.toStringAsFixed(2)}',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  // Image section
+                  item.carPart.photo?.isNotEmpty ?? false
+                      ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      'https://carparts1234.pythonanywhere.com${item.carPart.photo!}',
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                      : Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.image_not_supported),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _deleteCartItem(index),
+                  const SizedBox(width: 12),
+
+                  // Title and price section
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.carPart.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '\$${item.totalPrice.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: Theme.of(context).primaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Quantity controls
+                  Row(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            // Decrease button
+                            IconButton(
+                              icon: const Icon(Icons.remove),
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(),
+                              onPressed: () => _updateQuantity(index, item.quantity - 1),
+                            ),
+                            // Quantity display
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(
+                                '${item.quantity}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            // Increase button
+                            IconButton(
+                              icon: const Icon(Icons.add),
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(),
+                              onPressed: () => _updateQuantity(index, item.quantity + 1),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Delete button
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _deleteCartItem(index),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -200,7 +293,7 @@ class _CartPageState extends State<CartPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Total:',
+                      AppLocalizations.of(context)!.translate('total')!,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     Text(
@@ -224,7 +317,9 @@ class _CartPageState extends State<CartPage> {
                     ),
                   ),
                   child: Text(
-                    _isLoading ? 'Processing...' : 'Place Order',
+                    _isLoading
+                        ? AppLocalizations.of(context)!.translate('processing')!
+                        : AppLocalizations.of(context)!.translate('place_order')!,
                     style: const TextStyle(fontSize: 16),
                   ),
                 ),

@@ -190,14 +190,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.2"
-  cookie_jar:
-    dependency: transitive
-    description:
-      name: cookie_jar
-      sha256: a6ac027d3ed6ed756bfce8f3ff60cb479e266f3b0fdabd6242b804b6765e52de
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.0.8"
   cross_file:
     dependency: transitive
     description:
@@ -238,14 +230,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.8.0+1"
-  dio_cookie_manager:
-    dependency: "direct main"
-    description:
-      name: dio_cookie_manager
-      sha256: "47cacbf6a783c263bfa7cd7d08101e93127d87760ddb003ba289162f7be0f679"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.0"
   dio_web_adapter:
     dependency: transitive
     description:
@@ -339,6 +323,11 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.0.0"
+  flutter_localizations:
+    dependency: "direct main"
+    description: flutter
+    source: sdk
+    version: "0.0.0"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
@@ -497,10 +486,10 @@ packages:
     dependency: "direct main"
     description:
       name: intl
-      sha256: "3df61194eb431efc39c4ceba583b95633a403f46c9fd341e550ce0bfa50e9aa5"
+      sha256: d6f56758b7d3014a48af9701c085700aac781a92a87a62b1333b46d8879661cf
       url: "https://pub.dev"
     source: hosted
-    version: "0.20.2"
+    version: "0.19.0"
   io:
     dependency: transitive
     description:
@@ -930,14 +919,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.0"
-  universal_io:
-    dependency: transitive
-    description:
-      name: universal_io
-      sha256: "1722b2dcc462b4b2f3ee7d188dad008b6eb4c40bbd03a3de451d82c78bba9aad"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.2"
   uuid:
     dependency: transitive
     description:

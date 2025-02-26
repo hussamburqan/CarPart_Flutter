@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../Services/localizations.dart'; // Import your localization service
 
 class AboutUsPage extends StatelessWidget {
   const AboutUsPage({Key? key}) : super(key: key);
@@ -11,7 +12,7 @@ class AboutUsPage extends StatelessWidget {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         iconTheme: IconThemeData(color: Colors.black87),
         title: Text(
-          'Project Owners',
+          AppLocalizations.of(context)!.translate('project_owners')!,
           style: TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.bold,
@@ -34,7 +35,7 @@ class AboutUsPage extends StatelessWidget {
           children: [
             _buildSectionHeader(
               icon: Icons.group,
-              title: 'Project Owners',
+              title: AppLocalizations.of(context)!.translate('project_owners')!,
             ),
             const SizedBox(height: 16),
             _buildOwnerCard(
@@ -140,4 +141,3 @@ class AboutUsPage extends StatelessWidget {
     );
   }
 }
-

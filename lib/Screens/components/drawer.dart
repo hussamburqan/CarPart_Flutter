@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:provider/provider.dart';
 import '../../Services/auth_service.dart';
+import '../../Services/localizations.dart'; // Import your localization service
 import '../../main.dart';
 import '../oredrs_page.dart';
 
@@ -14,8 +16,32 @@ class DrawerHome extends StatefulWidget {
 class _DrawerHomeState extends State<DrawerHome> {
   final _authBox = Hive.box('auth');
 
+  void _navigateTo(String route) {
+    if (route == '/home') {
+      Navigator.pop(context);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(navigatorKey.currentContext!).pushReplacementNamed(route);
+      });
+      return;
+    }
+    Navigator.pop(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Navigator.of(navigatorKey.currentContext!).pushNamed(route);
+    });
+  }
+
+  void _navigateToPage(Widget page) {
+    Navigator.pop(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Navigator.of(navigatorKey.currentContext!).push(
+        MaterialPageRoute(builder: (context) => page),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final languageProvider = Provider.of<LanguageProvider>(context);
     return Drawer(
       child: Container(
         decoration: BoxDecoration(
@@ -31,7 +57,7 @@ class _DrawerHomeState extends State<DrawerHome> {
         child: Column(
           children: [
             Container(
-              padding: EdgeInsets.only(top: 50, bottom: 20),
+              padding: EdgeInsets.only(top: 50, bottom: 10),
               child: Column(
                 children: [
                   CircleAvatar(
@@ -44,13 +70,53 @@ class _DrawerHomeState extends State<DrawerHome> {
                     ),
                   ),
                   SizedBox(height: 15),
-                  Text(
-                    '${_authBox.get('username')}',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 23,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    children: [
+                      Spacer(flex: 1),
+                      PopupMenuButton<String>(
+                        icon: Icon(
+                          Icons.language,
+                          color: Colors.white,
+                        ),
+                        onSelected: (String newLang) async {
+                          if (newLang != null) {
+                            languageProvider.changeLanguage(newLang);
+                          }
+                        },
+                        itemBuilder: (BuildContext context) => [
+                          PopupMenuItem(
+                            value: 'en',
+                            child: Row(
+                              children: [
+                                Icon(Icons.language, color: Colors.blue),
+                                SizedBox(width: 10),
+                                Text(AppLocalizations.of(context)!.translate('english')!),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'ar',
+                            child: Row(
+                              children: [
+                                Icon(Icons.language, color: Colors.blue),
+                                SizedBox(width: 10),
+                                Text(AppLocalizations.of(context)!.translate('arabic')!),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      Spacer(flex: 1),
+                      Text(
+                        '${_authBox.get('username')}',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 23,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Spacer(flex: 3),
+                    ],
                   ),
                 ],
               ),
@@ -70,102 +136,59 @@ class _DrawerHomeState extends State<DrawerHome> {
                     SizedBox(height: 20),
                     _buildMenuItem(
                       icon: Icons.home_rounded,
-                      title: 'Home',
-                      onTap: () {
-                        Navigator.pop(context);
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          Navigator.of(navigatorKey.currentContext!).pushReplacementNamed('/home');
-                        });
-                      },
+                      title: AppLocalizations.of(context)!.translate('home')!,
+                      onTap: () => _navigateTo('/home'),
                     ),
                     _buildMenuItem(
                       icon: Icons.shopping_cart,
-                      title: 'My Cart',
-                      onTap: () {
-                        Navigator.pop(context);
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          Navigator.of(navigatorKey.currentContext!).pushNamed('/cart');
-                        });
-                      },
+                      title: AppLocalizations.of(context)!.translate('my_cart')!,
+                      onTap: () => _navigateTo('/cart'),
                     ),
                     _buildMenuItem(
                       icon: Icons.calendar_month_rounded,
-                      title: 'Order',
+                      title: AppLocalizations.of(context)!.translate('order')!,
                       onTap: () {
                         Navigator.pop(context);
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           Navigator.of(navigatorKey.currentContext!).push(
                             MaterialPageRoute(
-                              builder: (context) => OrdersPage(isSeller: false ),
+                              builder: (context) => OrdersPage(isSeller: false),
                             ),
                           );
                         });
                       },
                     ),
-
-                    ...(_authBox.get('role') == 'seller'
-                        ? [
+                    if (_authBox.get('role') == 'seller') ...[
                       _buildMenuItem(
                         icon: Icons.car_repair,
-                        title: 'My Car Parts',
-                        onTap: () {
-                          Navigator.pop(context);
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            Navigator.of(navigatorKey.currentContext!).pushNamed('/mycarparts');
-                          });
-                        },
+                        title: AppLocalizations.of(context)!.translate('my_car_parts')!,
+                        onTap: () => _navigateTo('/mycarparts'),
                       ),
-                    ] : []),
-
-                    ...(_authBox.get('role') == 'seller'
-                        ? [
                       _buildMenuItem(
                         icon: Icons.shopping_cart,
-                        title: 'Seller Orders',
-                        onTap: () {
-                          Navigator.pop(context);
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            Navigator.of(navigatorKey.currentContext!).push(
-                              MaterialPageRoute(
-                                builder: (context) => OrdersPage(isSeller: true),
-                              ),
-                            );
-                          });
-                        },
+                        title: AppLocalizations.of(context)!.translate('seller_orders')!,
+                        onTap: () => _navigateToPage(OrdersPage(isSeller: true)),
                       ),
-                    ] : []),
+                    ],
                     _buildMenuItem(
                       icon: Icons.person_rounded,
-                      title: 'Profile Setting',
-                      onTap: () {
-                        Navigator.pop(context);
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          Navigator.of(navigatorKey.currentContext!).pushNamed('/profile');
-                        });
-                      },
+                      title: AppLocalizations.of(context)!.translate('profile_setting')!,
+                      onTap: () => _navigateTo('/profile'),
                     ),
                     _buildMenuItem(
                       icon: Icons.man,
-                      title: 'About us',
-                      onTap: () {
-                        Navigator.pop(context);
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          Navigator.of(navigatorKey.currentContext!).pushNamed('/aboutus');
-                        });
-                      },
+                      title: AppLocalizations.of(context)!.translate('about_us')!,
+                      onTap: () => _navigateTo('/aboutus'),
                     ),
                     Spacer(),
                     _buildMenuItem(
                       icon: Icons.logout_rounded,
-                      title: 'Logout',
+                      title: AppLocalizations.of(context)!.translate('logout')!,
                       isLogout: true,
-                      onTap: () {
-                        AuthService auth = AuthService();
-                        auth.logout();
-                        Navigator.pop(context);
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          Navigator.of(navigatorKey.currentContext!).pushReplacementNamed('/login');
-                        });
+                      onTap: () async {
+                        final auth = AuthService();
+                        await auth.logout(context);
+                        _navigateTo('/login');
                       },
                     ),
                     SizedBox(height: 20),

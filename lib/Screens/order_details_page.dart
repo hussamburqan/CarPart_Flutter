@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../Model/order.dart';
-import '../Services/orderservies.dart';
+import '../Services/localizations.dart';
 
 class OrderDetailsPage extends StatefulWidget {
   final Order order;
@@ -16,7 +16,6 @@ class OrderDetailsPage extends StatefulWidget {
 }
 
 class _OrderDetailsPageState extends State<OrderDetailsPage> {
-  final OrderService _orderService = OrderService();
   bool _isLoading = false;
   late Order _order;
 
@@ -24,36 +23,6 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   void initState() {
     super.initState();
     _order = widget.order;
-  }
-
-  Future<void> _updateOrderStatus(String newStatus) async {
-    setState(() => _isLoading = true);
-
-    try {
-      final updatedOrder = await _orderService.updateOrderStatus(
-        _order.id,
-        newStatus,
-      );
-      setState(() => _order = updatedOrder);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Order status updated successfully'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to update order status: $e'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
   }
 
   @override
@@ -67,7 +36,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Order Details',
+          AppLocalizations.of(context)!.translate('order_details')!,
           style: TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.bold,
@@ -100,7 +69,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Order #${_order.id}',
+                          '${AppLocalizations.of(context)!.translate('order')!} #${_order.id}',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -112,13 +81,13 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                     SizedBox(height: 20),
                     _buildInfoRow(
                       icon: Icons.person_outline,
-                      title: 'Customer',
+                      title: AppLocalizations.of(context)!.translate('customer')!,
                       value: _order.userName,
                     ),
                     SizedBox(height: 12),
                     _buildInfoRow(
                       icon: Icons.calendar_today_outlined,
-                      title: 'Order Date',
+                      title: AppLocalizations.of(context)!.translate('order_date')!,
                       value: DateFormat('MMM dd, yyyy HH:mm').format(_order.createdAt),
                     ),
                   ],
@@ -139,7 +108,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                   Padding(
                     padding: EdgeInsets.all(20),
                     child: Text(
-                      'Order Items',
+                      AppLocalizations.of(context)!.translate('order_items')!,
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -168,7 +137,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                               child: Image.network(
                                 'https://carparts1234.pythonanywhere.com${_order.items[index].photo}',
                                 fit: BoxFit.cover,
-                                  )
+                              ),
                             ),
                             SizedBox(width: 16),
                             Expanded(
@@ -184,7 +153,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                                   ),
                                   SizedBox(height: 4),
                                   Text(
-                                    'Quantity: ${item.quantity}',
+                                    '${AppLocalizations.of(context)!.translate('quantity')!}: ${item.quantity}',
                                     style: TextStyle(
                                       color: Colors.grey[600],
                                       fontSize: 14,
@@ -223,7 +192,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Price Summary',
+                      AppLocalizations.of(context)!.translate('price_summary')!,
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -235,7 +204,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Subtotal',
+                          AppLocalizations.of(context)!.translate('subtotal')!,
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 16,
@@ -257,7 +226,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Total',
+                          AppLocalizations.of(context)!.translate('total')!,
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,

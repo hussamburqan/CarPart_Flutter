@@ -1,9 +1,9 @@
 import 'dart:convert';
-
+import 'package:carparts/Screens/verify_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-
 import '../Services/TowFactorAuth.dart';
+import '../Services/localizations.dart'; // Import your localization service
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -13,7 +13,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final _authService = TwoFactorAuthService();
+  late TwoFactorAuthService _authService;
   bool _is2FAEnabled = false;
   String? _qrCodeData;
   bool _isLoading = false;
@@ -24,14 +24,46 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
+    _authService = TwoFactorAuthService();
     _check2FAStatus();
+  }
+
+  Future<void> _setup2FA() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final response = await _authService.setup2FA(context);
+
+      setState(() => _isLoading = false);
+
+      if (response != null) {
+        final verified = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EmailVerificationPage(),
+          ),
+        );
+
+        if (verified == true) {
+          _check2FAStatus();
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.translate('failed_initiate_2fa')!)),
+        );
+      }
+    } catch (e) {
+      _showSnackBar(e.toString());
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _check2FAStatus() async {
     try {
       setState(() => _isLoading = true);
-      final response = await _authService.verify2FA();
-      if (response.containsKey('qr_code')) {
+      final response = await _authService.verify2FA(context);
+      if (response != null && response.containsKey('qr_code')) {
         setState(() {
           _qrCodeData = response['qr_code'];
           _is2FAEnabled = true;
@@ -42,22 +74,7 @@ class _ProfilePageState extends State<ProfilePage> {
         });
       }
     } catch (e) {
-      _showSnackBar('Failed to check 2FA status: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _setup2FA() async {
-    try {
-      setState(() => _isLoading = true);
-      final response = await _authService.setup2FA();
-      setState(() {
-        _qrCodeData = response['qr_code'];
-        _is2FAEnabled = true;
-      });
-    } catch (e) {
-      _showSnackBar(e.toString());
+      _showSnackBar(AppLocalizations.of(context)!.translate('failed_check_2fa_status')!);
     } finally {
       setState(() => _isLoading = false);
     }
@@ -66,16 +83,16 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _disable2FA() async {
     try {
       setState(() => _isLoading = true);
-      final success = await _authService.disable2FA();
+      final success = await _authService.disable2FA(context);
       if (success) {
         setState(() {
           _qrCodeData = null;
           _is2FAEnabled = false;
           _isQRCodeVisible = false;
         });
-        _showSnackBar('2FA disabled successfully', isError: false);
+        _showSnackBar(AppLocalizations.of(context)!.translate('2fa_disabled_successfully')!, isError: false);
       } else {
-        _showSnackBar('Failed to disable 2FA');
+        _showSnackBar(AppLocalizations.of(context)!.translate('failed_disable_2fa')!);
       }
     } catch (e) {
       _showSnackBar(e.toString());
@@ -88,7 +105,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       setState(() => _isLoadingSeller = true);
       await Future.delayed(const Duration(seconds: 2));
-      _showSnackBar('Seller upgrade request submitted!', isError: false);
+      _showSnackBar(AppLocalizations.of(context)!.translate('seller_upgrade_request_submitted')!, isError: false);
     } catch (e) {
       _showSnackBar(e.toString());
     } finally {
@@ -103,23 +120,23 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Enter Password to View QR Code'),
+          title: Text(AppLocalizations.of(context)!.translate('enter_password_to_view_qr_code')!),
           content: TextField(
             controller: passwordController,
             obscureText: true,
-            decoration: const InputDecoration(labelText: 'Password'),
+            decoration: InputDecoration(labelText: AppLocalizations.of(context)!.translate('password')!),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text(AppLocalizations.of(context)!.translate('cancel')!),
             ),
             TextButton(
               onPressed: () async {
                 final password = passwordController.text;
                 if (password.isNotEmpty) {
                   try {
-                    final success = await _authService.verifyPassword(password);
+                    final success = await _authService.verifyPassword(password, context);
                     if (success) {
                       setState(() {
                         _isQRCodeVisible = true;
@@ -127,24 +144,22 @@ class _ProfilePageState extends State<ProfilePage> {
                       Navigator.pop(context);
                     } else {
                       Navigator.pop(context);
-
-                      _showSnackBar('Password is incorrect');
+                      _showSnackBar(AppLocalizations.of(context)!.translate('incorrect_password')!);
                     }
                   } catch (e) {
-                    _showSnackBar('Failed to verify password: $e');
+                    _showSnackBar(AppLocalizations.of(context)!.translate('failed_verify_password')!);
                   }
                 } else {
-                  _showSnackBar('Please enter a password');
+                  _showSnackBar(AppLocalizations.of(context)!.translate('please_enter_password')!);
                 }
               },
-              child: const Text('Confirm'),
+              child: Text(AppLocalizations.of(context)!.translate('confirm')!),
             ),
           ],
         );
       },
     );
   }
-
 
   void _showSnackBar(String message, {bool isError = true}) {
     final color = isError ? Colors.red : Colors.green;
@@ -167,7 +182,7 @@ class _ProfilePageState extends State<ProfilePage> {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         iconTheme: IconThemeData(color: Colors.black87),
         title: Text(
-          'Profile Settings',
+          AppLocalizations.of(context)!.translate('profile_settings')!,
           style: TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.bold,
@@ -191,7 +206,7 @@ class _ProfilePageState extends State<ProfilePage> {
             // Security Section
             _buildSectionHeader(
               icon: Icons.security_rounded,
-              title: 'Security Settings',
+              title: AppLocalizations.of(context)!.translate('security_settings')!,
             ),
             const SizedBox(height: 16),
             _build2FACard(),
@@ -200,7 +215,7 @@ class _ProfilePageState extends State<ProfilePage> {
             // Account Section
             _buildSectionHeader(
               icon: Icons.store_rounded,
-              title: 'Account Settings',
+              title: AppLocalizations.of(context)!.translate('account_settings')!,
             ),
             const SizedBox(height: 16),
             _buildSellerCard(),
@@ -264,7 +279,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Two-Factor Authentication',
+                          AppLocalizations.of(context)!.translate('two_factor_authentication')!,
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -272,7 +287,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         Text(
-                          _is2FAEnabled ? 'Enabled' : 'Disabled',
+                          _is2FAEnabled ? AppLocalizations.of(context)!.translate('enabled')! : AppLocalizations.of(context)!.translate('disabled')!,
                           style: TextStyle(
                             color: _is2FAEnabled ? Colors.green : Colors.grey,
                             fontWeight: FontWeight.w500,
@@ -308,7 +323,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Scan this QR code with your authenticator app',
+                  AppLocalizations.of(context)!.translate('scan_qr_code_with_authenticator_app')!,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.black54,
@@ -319,8 +334,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 Center(
                   child: ElevatedButton.icon(
                     onPressed: _showQRCodeWithPassword,
-                    icon: Icon(Icons.qr_code_rounded,color: Colors.white,),
-                    label: Text('Show QR Code'),
+                    icon: Icon(Icons.qr_code_rounded, color: Colors.white),
+                    label: Text(AppLocalizations.of(context)!.translate('show_qr_code')!),
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       shape: RoundedRectangleBorder(
@@ -352,7 +367,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   )
                       : Text(
-                    _is2FAEnabled ? 'Disable 2FA' : 'Enable 2FA',
+                    _is2FAEnabled ? AppLocalizations.of(context)!.translate('disable_2fa')! : AppLocalizations.of(context)!.translate('enable_2fa')!,
                     style: TextStyle(fontSize: 16),
                   ),
                 ),
@@ -387,7 +402,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   Icon(Icons.store_rounded, color: Colors.orange.shade700, size: 28),
                   const SizedBox(width: 12),
                   Text(
-                    'Seller Account',
+                    AppLocalizations.of(context)!.translate('seller_account')!,
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -397,8 +412,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
               const SizedBox(height: 16),
-              _authBox.get('role') !='seller'?
-              Container(
+              _authBox.get('role') != 'seller'
+                  ? Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.orange.shade50,
@@ -411,7 +426,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Upgrade to a seller account to start listing your car parts for sale.',
+                        AppLocalizations.of(context)!.translate('upgrade_to_seller_description')!,
                         style: TextStyle(
                           color: Colors.black87,
                           height: 1.4,
@@ -420,10 +435,11 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ],
                 ),
-              ):SizedBox.shrink(),
+              )
+                  : SizedBox.shrink(),
               const SizedBox(height: 20),
-              _authBox.get('role') !='seller'?
-              SizedBox(
+              _authBox.get('role') != 'seller'
+                  ? SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _isLoadingSeller ? null : _upgradeToseller,
@@ -446,16 +462,17 @@ class _ProfilePageState extends State<ProfilePage> {
                       : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.circle_outlined,color: Colors.white),
+                      Icon(Icons.circle_outlined, color: Colors.white),
                       const SizedBox(width: 8),
                       Text(
-                        'Upgrade to Seller',
+                        AppLocalizations.of(context)!.translate('upgrade_to_seller')!,
                         style: TextStyle(fontSize: 16),
                       ),
                     ],
                   ),
                 ),
-              ):SizedBox(
+              )
+                  : SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: null,
@@ -472,7 +489,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       Icon(Icons.check_circle, color: Colors.orange.shade600, size: 24),
                       const SizedBox(width: 8),
                       Text(
-                        'You are subscribed',
+                        AppLocalizations.of(context)!.translate('you_are_subscribed')!,
                         style: TextStyle(fontSize: 16, color: Colors.black),
                       ),
                     ],

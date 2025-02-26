@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-
 import '../Model/models.dart';
 import '../Model/order.dart';
+import '../Services/localizations.dart';
 
 class CarPartDetailsPage extends StatelessWidget {
   final CarPart carPart;
@@ -21,17 +21,18 @@ class CarPartDetailsPage extends StatelessWidget {
             expandedHeight: 300,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-                background: carPart.photo != null ? Image.network(
-                  'https://carparts1234.pythonanywhere.com${carPart.photo}',
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                ): Container(
+              background: carPart.photo != null
+                  ? Image.network(
+                'https://carparts1234.pythonanywhere.com${carPart.photo}',
+                fit: BoxFit.cover,
+                width: double.infinity,
+              )
+                  : Container(
                 color: Colors.grey[200],
                 child: const Icon(Icons.image_not_supported, size: 50),
               ),
             ),
           ),
-
           SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.all(16),
@@ -71,16 +72,20 @@ class CarPartDetailsPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  _buildInfoSection('Description', carPart.description),
+                  _buildInfoSection(
+                      AppLocalizations.of(context)!.translate('description')!,
+                      carPart.description),
                   const SizedBox(height: 16),
                   _buildSpecifications(context),
                   const SizedBox(height: 16),
-                  _buildSellerInfo(),
+                  _buildSellerInfo(context),
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: carPart.quantity > 0 ? () => _addToCart(context, carPart) : null,
+                      onPressed: carPart.quantity > 0
+                          ? () => _addToCart(context, carPart)
+                          : null,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
@@ -90,10 +95,15 @@ class CarPartDetailsPage extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.shopping_cart_outlined, size: 18,color: Colors.white,),
+                          const Icon(Icons.shopping_cart_outlined,
+                              size: 18, color: Colors.white),
                           const SizedBox(width: 4),
                           Text(
-                            carPart.quantity > 0 ? 'Add to Cart' : 'Out of Stock',
+                            carPart.quantity > 0
+                                ? AppLocalizations.of(context)!
+                                .translate('add_to_cart')!
+                                : AppLocalizations.of(context)!
+                                .translate('out_of_stock')!,
                             style: const TextStyle(fontSize: 12),
                           ),
                         ],
@@ -109,7 +119,7 @@ class CarPartDetailsPage extends StatelessWidget {
     );
   }
 
-  void _addToCart(context,CarPart carPart) async {
+  void _addToCart(context, CarPart carPart) async {
     final cartBox = Hive.box<CartItem>('cartBox');
 
     final existingKey = cartBox.keys.firstWhere(
@@ -124,7 +134,7 @@ class CarPartDetailsPage extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Cannot add more. Only ${carPart.quantity} in stock!',
+              "${AppLocalizations.of(context)!.translate('cannot_add_more')!}${carPart.quantity}",
               style: TextStyle(color: Colors.white),
             ),
             backgroundColor: Colors.red,
@@ -134,17 +144,19 @@ class CarPartDetailsPage extends StatelessWidget {
         return;
       }
 
-      final updatedItem = existingItem.copyWith(quantity: existingItem.quantity + 1);
+      final updatedItem =
+      existingItem.copyWith(quantity: existingItem.quantity + 1);
       cartBox.put(existingKey, updatedItem);
     } else {
       if (carPart.quantity > 0) {
-        final newItem = CartItem(carPart: carPart, quantity: 1, price: carPart.price);
+        final newItem = CartItem(
+            carPart: carPart, quantity: 1, price: carPart.price);
         cartBox.add(newItem);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Item is out of stock!',
+              AppLocalizations.of(context)!.translate('out_of_stock')!,
               style: TextStyle(color: Colors.white),
             ),
             backgroundColor: Colors.red,
@@ -157,10 +169,11 @@ class CarPartDetailsPage extends StatelessWidget {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${carPart.name} added to cart!'),
+        content: Text(
+            '${carPart.name} ${AppLocalizations.of(context)!.translate('added_to_cart')!}'),
         behavior: SnackBarBehavior.floating,
         action: SnackBarAction(
-          label: 'View Cart',
+          label: AppLocalizations.of(context)!.translate('view_cart')!,
           onPressed: () {
             Navigator.pushNamed(context, '/cart');
           },
@@ -203,16 +216,18 @@ class CarPartDetailsPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Specifications',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context)!.translate('specifications')!,
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 16),
-          _buildSpecItem('Stock', carPart.quantity.toString()),
-          _buildSpecItem('Category', carPart.categoryName ?? 'Unknown'),
+          _buildSpecItem(AppLocalizations.of(context)!.translate('stock')!,
+              carPart.quantity.toString()),
+          _buildSpecItem(AppLocalizations.of(context)!.translate('category')!,
+              carPart.categoryName ?? AppLocalizations.of(context)!.translate('unknown')!),
         ],
       ),
     );
@@ -243,7 +258,7 @@ class CarPartDetailsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSellerInfo() {
+  Widget _buildSellerInfo(context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -269,7 +284,8 @@ class CarPartDetailsPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  carPart.seller?.username ?? 'Unknown Seller',
+                  carPart.seller?.username ??
+                      AppLocalizations.of(context)!.translate('unknown_seller')!,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

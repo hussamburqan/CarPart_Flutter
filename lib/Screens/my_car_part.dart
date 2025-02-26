@@ -3,7 +3,9 @@ import 'package:hive/hive.dart';
 import '../Model/models.dart';
 import '../Services/Service.dart';
 import 'components/my_car_part_card.dart';
+import 'components/pagination.dart';
 import 'edit_my_part.dart';
+import '../../Services/localizations.dart';
 
 class MyCarPartsPage extends StatefulWidget {
   const MyCarPartsPage({Key? key}) : super(key: key);
@@ -40,6 +42,7 @@ class _MyCarPartsPageState extends State<MyCarPartsPage> {
           _hasMore = true;
         }
       });
+
       Box _auth = await Hive.openBox('auth');
       final response = await _apiService.getCarParts(
         query: '',
@@ -50,8 +53,9 @@ class _MyCarPartsPageState extends State<MyCarPartsPage> {
         page: _currentPage,
         sellerId: _auth.get('id'),
         perPage: _itemsPerPage,
+        context: context,
       );
-      print(_auth.get('id'));
+
       setState(() {
         _carParts = (response['results'] as List)
             .map((json) => CarPart.fromJson(json))
@@ -64,7 +68,7 @@ class _MyCarPartsPageState extends State<MyCarPartsPage> {
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = AppLocalizations.of(context)!.translate('load_failed')!;
         _isLoading = false;
       });
     }
@@ -93,7 +97,7 @@ class _MyCarPartsPageState extends State<MyCarPartsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'My Car Parts',
+          AppLocalizations.of(context)!.translate('my_car_parts')!,
           style: TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.bold,
@@ -116,7 +120,7 @@ class _MyCarPartsPageState extends State<MyCarPartsPage> {
             Text(_error!, style: const TextStyle(color: Colors.red)),
             ElevatedButton(
               onPressed: () => _loadCarParts(refresh: true),
-              child: const Text('Retry'),
+              child: Text(AppLocalizations.of(context)!.translate('retry')!),
             ),
           ],
         ),
@@ -126,7 +130,9 @@ class _MyCarPartsPageState extends State<MyCarPartsPage> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: () => _loadCarParts(refresh: true),
-              child: GridView.builder(
+              child: _isLoading && _carParts.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : GridView.builder(
                 padding: const EdgeInsets.all(16),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
@@ -154,56 +160,12 @@ class _MyCarPartsPageState extends State<MyCarPartsPage> {
               ),
             ),
           ),
-          _buildPaginationControls(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaginationControls() {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _currentPage > 1 ? _loadPreviousPage : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _currentPage > 1 ? Colors.blue : Colors.grey[300],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.arrow_back, size: 16, color: Colors.white),
-                  SizedBox(width: 4),
-                  Text('Previous', style: TextStyle(color: Colors.white)),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(width: 12),
-          Text(
-            'Page $_currentPage of $_totalPages',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _currentPage < _totalPages ? _loadNextPage : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _currentPage < _totalPages ? Colors.blue : Colors.grey[300],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Text('Next', style: TextStyle(color: Colors.white)),
-                  SizedBox(width: 4),
-                  Icon(Icons.arrow_forward, size: 16, color: Colors.white),
-                ],
-              ),
-            ),
-          ),
+          PaginationControls(
+            currentPage: _currentPage,
+            totalPages: _totalPages,
+            onNext: _loadNextPage,
+            onPrevious: _loadPreviousPage,
+          )
         ],
       ),
     );

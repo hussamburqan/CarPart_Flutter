@@ -3,8 +3,10 @@ import 'package:hive/hive.dart';
 import '../Model/models.dart';
 import '../Model/order.dart';
 import '../Services/Service.dart';
+import '../Services/localizations.dart';
 import 'car_part_details.dart';
 import 'components/car_part_card.dart';
+import 'components/pagination.dart';
 
 class CarPartsPage extends StatefulWidget {
   final Category? category;
@@ -47,9 +49,10 @@ class _CarPartsPageState extends State<CarPartsPage> {
       print(widget.seller?.id);
       int? id;
       if(widget.seller?.id != null){
-         id = widget.seller!.id!-1;
+        id = widget.seller!.id!-1;
       }
       final response = await _apiService.getCarParts(
+        context: context,
         query: '',
         minPrice: null,
         maxPrice: null,
@@ -97,7 +100,7 @@ class _CarPartsPageState extends State<CarPartsPage> {
     }
   }
 
-  void _addToCart(CarPart carPart) async {
+  void _addToCart(context, CarPart carPart) async {
     final cartBox = Hive.box<CartItem>('cartBox');
 
     final existingKey = cartBox.keys.firstWhere(
@@ -112,7 +115,7 @@ class _CarPartsPageState extends State<CarPartsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Cannot add more. Only ${carPart.quantity} in stock!',
+              "${AppLocalizations.of(context)!.translate('cannot_add_more')!}${carPart.quantity}",
               style: TextStyle(color: Colors.white),
             ),
             backgroundColor: Colors.red,
@@ -122,17 +125,19 @@ class _CarPartsPageState extends State<CarPartsPage> {
         return;
       }
 
-      final updatedItem = existingItem.copyWith(quantity: existingItem.quantity + 1);
+      final updatedItem =
+      existingItem.copyWith(quantity: existingItem.quantity + 1);
       cartBox.put(existingKey, updatedItem);
     } else {
       if (carPart.quantity > 0) {
-        final newItem = CartItem(carPart: carPart, quantity: 1, price: carPart.price);
+        final newItem = CartItem(
+            carPart: carPart, quantity: 1, price: carPart.price);
         cartBox.add(newItem);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Item is out of stock!',
+              AppLocalizations.of(context)!.translate('out_of_stock')!,
               style: TextStyle(color: Colors.white),
             ),
             backgroundColor: Colors.red,
@@ -145,10 +150,11 @@ class _CarPartsPageState extends State<CarPartsPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${carPart.name} added to cart!'),
+        content: Text(
+            '${carPart.name} ${AppLocalizations.of(context)!.translate('added_to_cart')!}'),
         behavior: SnackBarBehavior.floating,
         action: SnackBarAction(
-          label: 'View Cart',
+          label: AppLocalizations.of(context)!.translate('view_cart')!,
           onPressed: () {
             Navigator.pushNamed(context, '/cart');
           },
@@ -156,7 +162,6 @@ class _CarPartsPageState extends State<CarPartsPage> {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -178,15 +183,61 @@ class _CarPartsPageState extends State<CarPartsPage> {
           ),
         ],
       ),
-      body: _error != null
+      body: _isLoading
           ? Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(_error!, style: const TextStyle(color: Colors.red)),
-            ElevatedButton(
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+            ),
+            SizedBox(height: 16),
+            Text(
+              AppLocalizations.of(context)!.translate('loading')!,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      )
+          : _error != null
+          ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: Colors.red[400],
+            ),
+            SizedBox(height: 16),
+            Text(
+              AppLocalizations.of(context)!.translate('something_wrong')!,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              _error!,
+              style: TextStyle(color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 24),
+            ElevatedButton.icon(
               onPressed: () => _loadCarParts(refresh: true),
-              child: const Text('Retry'),
+              icon: Icon(Icons.refresh),
+              label: Text(AppLocalizations.of(context)!.translate('retry')!),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
           ],
         ),
@@ -217,63 +268,18 @@ class _CarPartsPageState extends State<CarPartsPage> {
                         ),
                       );
                     },
-                    onAddToCart: () => _addToCart(carPart),
+                    onAddToCart: () => _addToCart(context,carPart),
                   );
                 },
               ),
             ),
           ),
-          _buildPaginationControls(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaginationControls() {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _currentPage > 1 ? _loadPreviousPage : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _currentPage > 1 ? Colors.blue : Colors.grey[300],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.arrow_back, size: 16, color: Colors.white),
-                  SizedBox(width: 4),
-                  Text('Previous', style: TextStyle(color: Colors.white)),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(width: 12),
-          Text(
-            'Page $_currentPage of $_totalPages',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _currentPage < _totalPages ? _loadNextPage : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _currentPage < _totalPages ? Colors.blue : Colors.grey[300],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Text('Next', style: TextStyle(color: Colors.white)),
-                  SizedBox(width: 4),
-                  Icon(Icons.arrow_forward, size: 16, color: Colors.white),
-                ],
-              ),
-            ),
-          ),
-        ],
+          PaginationControls(
+            currentPage: _currentPage,
+            totalPages: _totalPages,
+            onNext: _loadNextPage,
+            onPrevious: _loadPreviousPage,
+          )        ],
       ),
     );
   }

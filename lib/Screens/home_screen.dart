@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import '../Model/models.dart';
 import '../Services/Service.dart';
+import '../Services/localizations.dart';
 import 'car_part.dart';
 import 'components/drawer.dart';
+import 'components/pagination.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -32,8 +34,8 @@ class _HomePageState extends State<HomePage> {
     try {
       setState(() => _isLoading = true);
 
-      final categories = await _apiService.getCategories();
-      final sellers = await _apiService.getSellers();
+      final categories = await _apiService.getCategories(context);
+      final sellers = await _apiService.getSellers(context);
 
       setState(() {
         _categories = categories;
@@ -49,8 +51,9 @@ class _HomePageState extends State<HomePage> {
       });
     }
   }
+
   void _loadNextPage() {
-    if (_currentPage + 1 < _totalPages) { // Allow reaching the last page
+    if (_currentPage + 1 < _totalPages) {
       setState(() {
         _currentPage++;
       });
@@ -65,7 +68,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -79,7 +81,7 @@ class _HomePageState extends State<HomePage> {
               ),
               SizedBox(height: 16),
               Text(
-                'Loading...',
+                AppLocalizations.of(context)!.translate('loading')!,
                 style: TextStyle(
                   color: Colors.grey[600],
                   fontSize: 16,
@@ -104,7 +106,7 @@ class _HomePageState extends State<HomePage> {
               ),
               SizedBox(height: 16),
               Text(
-                'Oops! Something went wrong',
+                AppLocalizations.of(context)!.translate('something_wrong')!,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -121,7 +123,7 @@ class _HomePageState extends State<HomePage> {
               ElevatedButton.icon(
                 onPressed: _loadData,
                 icon: Icon(Icons.refresh),
-                label: Text('Retry'),
+                label: Text(AppLocalizations.of(context)!.translate('retry')!),
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(
@@ -135,8 +137,8 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    final startIndex = _currentPage * 1;
-    final endIndex = (_currentPage + 1) * 3;
+    final startIndex = _currentPage * 3;
+    final endIndex = startIndex + 3;
     final visibleSellers = _sellers.sublist(
       startIndex,
       endIndex > _sellers.length ? _sellers.length : endIndex,
@@ -148,7 +150,7 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         iconTheme: IconThemeData(color: Colors.black87),
         title: Text(
-          'Auto Parts Hub',
+          AppLocalizations.of(context)!.translate('auto_parts_hub')!,
           style: TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.bold,
@@ -169,7 +171,7 @@ class _HomePageState extends State<HomePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Categories',
+                      AppLocalizations.of(context)!.translate('categories')!,
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -217,7 +219,7 @@ class _HomePageState extends State<HomePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Featured Sellers',
+                      AppLocalizations.of(context)!.translate('featured_sellers')!,
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -225,7 +227,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     Text(
-                      'Page ${_currentPage + 1}',
+                      '${AppLocalizations.of(context)!.translate('page')!} ${_currentPage + 1}',
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontSize: 16,
@@ -243,60 +245,15 @@ class _HomePageState extends State<HomePage> {
                   return _SellerCard(seller: seller);
                 },
               ),
-
-              _buildPaginationControls(),
-
+              PaginationControls(
+                currentPage: _currentPage + 1,
+                totalPages: _totalPages,
+                onNext: _loadNextPage,
+                onPrevious: _loadPreviousPage,
+              )
             ],
           ),
         ),
-      ),
-    );
-  }
-  Widget _buildPaginationControls() {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _currentPage > 0 ? _loadPreviousPage : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _currentPage > 0 ? Colors.blue : Colors.grey[300],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.arrow_back, size: 16, color: Colors.white),
-                  SizedBox(width: 4),
-                  Text('Previous', style: TextStyle(color: Colors.white)),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(width: 12),
-          Text(
-            'Page ${_currentPage + 1} of $_totalPages',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _currentPage < _totalPages - 1 ? _loadNextPage : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _currentPage < _totalPages - 1 ? Colors.blue : Colors.grey[300],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Text('Next', style: TextStyle(color: Colors.white)),
-                  SizedBox(width: 4),
-                  Icon(Icons.arrow_forward, size: 16, color: Colors.white),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -379,7 +336,7 @@ class _CategoryCard extends StatelessWidget {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'Tap to explore',
+                        AppLocalizations.of(context)!.translate('tap_to_explore')!,
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: 14,
@@ -476,42 +433,6 @@ class _SellerCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PaginationButton extends StatelessWidget {
-  final VoidCallback? onPressed;
-  final IconData icon;
-  final String label;
-
-  const _PaginationButton({
-    Key? key,
-    required this.onPressed,
-    required this.icon,
-    required this.label,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: onPressed == null ? Colors.grey[300] : Colors.blue,
-        foregroundColor: onPressed == null ? Colors.grey[600] : Colors.white,
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16),
-          SizedBox(width: 8),
-          Text(label),
-        ],
       ),
     );
   }

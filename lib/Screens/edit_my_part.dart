@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../Model/models.dart';
 import '../Services/Service.dart';
+import '../Services/localizations.dart';
 
 class EditCarPartPage extends StatefulWidget {
   final CarPart carPart;
@@ -53,13 +54,13 @@ class _EditCarPartPageState extends State<EditCarPartPage> {
 
   Future<void> _loadCategories() async {
     try {
-      final categories = await _apiService.getCategories();
+      final categories = await _apiService.getCategories(context);
       setState(() {
         _categories = categories;
         _filteredCategories = categories;
       });
     } catch (e) {
-      _showSnackBar('Failed to load categories: $e');
+      _showSnackBar(AppLocalizations.of(context)!.translate('failed_load_categories')!);
     }
   }
 
@@ -84,7 +85,7 @@ class _EditCarPartPageState extends State<EditCarPartPage> {
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate() || _selectedCategoryId == null) {
-      _showSnackBar('Please fill all fields and select a category');
+      _showSnackBar(AppLocalizations.of(context)!.translate('fill_all_fields')!);
       return;
     }
 
@@ -100,16 +101,25 @@ class _EditCarPartPageState extends State<EditCarPartPage> {
 
     try {
       if (_selectedImage != null) {
-        await _apiService.updateCarPart(widget.carPart.id, formData, _selectedImage!.path);
+        await _apiService.updateCarPart(
+          context: context,
+          id: widget.carPart.id,
+          updates: formData,
+          imagePath: _selectedImage!.path,
+        );
       } else if (_currentImageUrl != null) {
-        await _apiService.updateCarPartNoPhoto(widget.carPart.id, formData);
+        await _apiService.updateCarPartNoPhoto(
+          context: context,
+          id: widget.carPart.id,
+          updates: formData,
+        );
       } else {
-        throw Exception('Please select an image');
+        throw Exception(AppLocalizations.of(context)!.translate('select_image')!);
       }
-      _showSnackBar('Product updated successfully!', isError: false);
+      _showSnackBar(AppLocalizations.of(context)!.translate('product_updated')!, isError: false);
       Navigator.pop(context);
     } catch (e) {
-      _showSnackBar('Failed to update product: $e');
+      _showSnackBar(AppLocalizations.of(context)!.translate('failed_update_product')!);
     } finally {
       setState(() => _isLoading = false);
     }
@@ -128,7 +138,7 @@ class _EditCarPartPageState extends State<EditCarPartPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Car Part'),
+        title: Text(AppLocalizations.of(context)!.translate('edit_car_part')!),
         elevation: 0,
         backgroundColor: Theme.of(context).primaryColor,
       ),
@@ -140,10 +150,10 @@ class _EditCarPartPageState extends State<EditCarPartPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildTextField(_nameController, 'Product Name', Icons.shopping_bag),
-                _buildTextField(_descriptionController, 'Description', Icons.description),
-                _buildTextField(_priceController, 'Price', Icons.attach_money, isNumber: true),
-                _buildTextField(_quantityController, 'Stock', Icons.inventory, isNumber: true),
+                _buildTextField(_nameController, AppLocalizations.of(context)!.translate('product_name')!, Icons.shopping_bag),
+                _buildTextField(_descriptionController, AppLocalizations.of(context)!.translate('description')!, Icons.description),
+                _buildTextField(_priceController, AppLocalizations.of(context)!.translate('price')!, Icons.attach_money, isNumber: true),
+                _buildTextField(_quantityController, AppLocalizations.of(context)!.translate('stock')!, Icons.inventory, isNumber: true),
                 const SizedBox(height: 20),
                 _buildCategorySearch(),
                 const SizedBox(height: 20),
@@ -169,7 +179,7 @@ class _EditCarPartPageState extends State<EditCarPartPage> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         ),
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-        validator: (value) => value!.isEmpty ? 'This field is required' : null,
+        validator: (value) => value!.isEmpty ? AppLocalizations.of(context)!.translate('field_required')! : null,
       ),
     );
   }
@@ -181,7 +191,7 @@ class _EditCarPartPageState extends State<EditCarPartPage> {
         TextFormField(
           controller: _categorySearchController,
           decoration: InputDecoration(
-            labelText: 'Search Category',
+            labelText: AppLocalizations.of(context)!.translate('search_category')!,
             prefixIcon: const Icon(Icons.search),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           ),
@@ -199,10 +209,10 @@ class _EditCarPartPageState extends State<EditCarPartPage> {
             setState(() => _selectedCategoryId = value);
           },
           decoration: InputDecoration(
-            labelText: 'Select Category',
+            labelText: AppLocalizations.of(context)!.translate('select_category')!,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          validator: (value) => value == null ? 'Please select a category' : null,
+          validator: (value) => value == null ? AppLocalizations.of(context)!.translate('select_category')! : null,
         ),
       ],
     );
@@ -213,7 +223,7 @@ class _EditCarPartPageState extends State<EditCarPartPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Product Image',
+          AppLocalizations.of(context)!.translate('product_image')!,
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
@@ -252,7 +262,7 @@ class _EditCarPartPageState extends State<EditCarPartPage> {
         onPressed: _isLoading ? null : _submitForm,
         child: _isLoading
             ? const CircularProgressIndicator(color: Colors.white)
-            : const Text('Update Product'),
+            : Text(AppLocalizations.of(context)!.translate('update_product')!),
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
